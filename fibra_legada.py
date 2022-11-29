@@ -38,19 +38,29 @@ month = month
 
 
 path = os.getcwd()
-path_telegram = '//node'
+path_telegram = 'C://Users//Rafael//Documents//icomon//node'
+
 file = '//Fibra_Optica_ico_base.xlsx'
-file_gh = '//LEGAL RE1.xlsx'
+file_gh = 'C://Users//Rafael//Documents//icomon//LEGAL RE1.xlsx'
+#file_gh = 'C://Users//Rafael//Documents//icomon//SRA.xlsx'
 file_cod_enc = '//COD_ENCER.xlsx'
 file_causa_portal = '//causas.xlsx'
 file_telegram = '//bot-legada'
 file_km = '//KM_FO.xlsx'
 
+print('start reading file')
 table_base = pd.read_excel(path+file)
+print('finish reading file base')
 table_cod_enc = pd.read_excel(path+file_cod_enc)
+print('finish reading file cod_enc')
 table_causa_portal = pd.read_excel(path+file_causa_portal)
-table_gh = pd.read_excel(path+file_gh)
+print('finish reading file causa portal')
+table_gh = pd.read_excel(file_gh)
+print('finish reading file gh')
 table_km = pd.read_excel(path+file_km)
+print('finish reading file km')
+
+print('finish reading file')
 
 
 tb_base = table_base
@@ -201,6 +211,9 @@ tb_base_backbone = tb_base_backbone[tb_base_backbone['MONTH'].isin([month])]
 vl_backbone = tb_base_backbone['UF'].count()
 #TMR
 vl_backbone_media_tmr = tb_base_backbone['result_hour'].mean()
+tb_base_backbone_tmr_fora_da_meta = tb_base_backbone[tb_base_backbone['tmr_meta'].isin(['FORA DA META'])]
+vl_backbone_tmr_fora_da_meta = tb_base_backbone_tmr_fora_da_meta['tmr_meta'].count()
+
 #NP
 tb_base_backbone_no_prazo = tb_base_backbone[tb_base_backbone['PRAZO_PSR_2016'].isin(['NP'])]
 tb_base_backbone_fora_prazo = tb_base_backbone[tb_base_backbone['PRAZO_PSR_2016'].isin(['FP'])]
@@ -225,7 +238,7 @@ print('np_backbone '+str(vl_backbone_np))
 print('fp_backbone '+str(vl_backbone_fp))
 print('np_result_backbone '+str(backbone_result))
 print('mean_backbone_tmr '+str(vl_backbone_media_tmr))
-
+print('qtde_backbone_tmr_fora_da_meta '+str(vl_backbone_tmr_fora_da_meta))
 
 #ACESSO
 #FILTERS
@@ -236,8 +249,11 @@ tb_base_acesso = tb_base_acesso[tb_base_acesso['COS'].isin(['PREFO'])]
 tb_base_acesso = tb_base_acesso[tb_base_acesso['FTTH'].isin(['N'])]
 tb_base_acesso = tb_base_acesso[tb_base_acesso['MONTH'].isin([month])]
 vl_acesso = tb_base_acesso['UF'].count()
+
 #TMR
 vl_acesso_media_tmr = tb_base_acesso['result_hour'].mean()
+tb_base_acesso_tmr_fora_da_meta = tb_base_acesso[tb_base_acesso['tmr_meta'].isin(['FORA DA META'])]
+vl_acesso_tmr_fora_da_meta = tb_base_acesso_tmr_fora_da_meta['tmr_meta'].count()
 #NP
 tb_base_acesso_no_prazo = tb_base_acesso[tb_base_acesso['PRAZO_PSR_2016'].isin(['NP'])]
 tb_base_acesso_fora_prazo = tb_base_acesso[tb_base_acesso['PRAZO_PSR_2016'].isin(['FP'])]
@@ -262,7 +278,7 @@ print('np_acesso '+str(vl_acesso_np))
 print('fp_acesso '+str(vl_acesso_fp))
 print('np_result_acesso '+str(acesso_result))
 print('mean_acesso_tmr '+str(vl_acesso_media_tmr))
-
+print('qtde_acesso_tmr_fora_da_meta '+str(vl_acesso_tmr_fora_da_meta))
 
 #NO PRAZO FTTH
 #PRIMARIO
@@ -330,7 +346,7 @@ dt = pd.DataFrame({
                    #'np_backbone_month':[],
 
                    #TMR BACKBONE
-                   'tmr_backbone':['','','',vl_backbone_media_tmr],
+                   'tmr_backbone':[vl_backbone_tmr_fora_da_meta,'','',vl_backbone_media_tmr],
                    #'np_ftth_secundario_month':[],
                    
 
@@ -340,7 +356,7 @@ dt = pd.DataFrame({
 
 
                     #TMR ACESSO
-                   'tmr_acesso':['','','',vl_acesso_media_tmr],
+                   'tmr_acesso':[vl_acesso_tmr_fora_da_meta,'','',vl_acesso_media_tmr],
                    #'np_ftth_secundario_month':[],
                    
                   
