@@ -4,10 +4,10 @@
 #git commit -m "message"
 #git push -u origin master.
 
-
 import pandas as pd
 import numpy as np
 import os
+import plotly.express as px
 import datetime as dt
 from calendar import monthrange
 
@@ -26,7 +26,7 @@ day_now = dt_now.day
 month = dt_now.month
 month = month 
 #end_day = 30 - day
-
+month = month
 
 #rompimento(prioridade 97,98,99) e atenuacao(prioridade 21):soma da qtde div km regional ou uf * 1000.TETE tete.b
 #backbone np (colun backbone: bbn, bbr) divide dado da coluna ay: np pelo total
@@ -88,21 +88,16 @@ vl_base = tb_base['UF'].count()
 print('count original '+str(vl_base))
 
 #FILTERS
-#tb_base = tb_base[tb_base['UF'].isin(['PR','AM','PA','BA','AP','RR'])]
-tb_base = tb_base[tb_base['UF'].isin(['PR'])]
-
-vl_uf = tb_base['UF'].count()
-print('count_after_uf '+str(vl_uf))
+tb_base = tb_base[tb_base['UF'].isin(['PR','AM','PA','BA','AP','RR'])]
 
 tb_base = tb_base[tb_base['AREA_TECNICA'].isin(['FO'])]
 #tb_base = tb_base[tb_base['FTTH'].isin(['N'])]
 tb_base = tb_base[tb_base['EXPURGO'].isin(['N','T'])]
 
+vl_uf = tb_base['UF'].count()
+print('count_after_uf '+str(vl_uf))
 
 
-
-#tb_base['COS_REDUCE'] = tb_base['COS'].str[-3:]
-#tb_base = tb_base[tb_base['COS_REDUCE'].isin(['EFO'])]
 
 tb_base['MONTH'] = pd.to_datetime(tb_base['ABERTURA']).dt.month
 tb_base['YEAR'] = pd.to_datetime(tb_base['ABERTURA']).dt.year
@@ -110,19 +105,29 @@ tb_base['YEAR'] = pd.to_datetime(tb_base['ABERTURA']).dt.year
 tb_base = tb_base[tb_base['MONTH'].isin([month])]
 vl_others_filters = tb_base['UF'].count()
 print('count_after_others_filters '+str(vl_others_filters))
+#END FILTERS
 
+#ESTRUTURAS PARA APOIAR FILTROS: FTTH, BACKBONE.
+tb_base = tb_base.fillna('DADOS N LOCALIZADOS')
+#tb_base['kee_status_ftth'] = tb_base['COS_NEW'].map(str)+'_'+tb_base['FTTH'].map(str)
+tb_base['COS_NEW'] = tb_base['COS'].str[-3:]
+tb_base['kee_status_ftth'] = tb_base['COS_NEW'].map(str)+'_'+tb_base['FTTH'].map(str)
+tb_base = tb_base.fillna('DADOS N LOCALIZADOS')
 
 #ATENUACAO, ROMPIMENTO
 tb_base['STATUS_AT_ROMP']=np.where(tb_base['PRIORIDADE']==21,'ATENUACAO',np.where(tb_base['PRIORIDADE']==97,'ROMPIMENTO',np.where(tb_base['PRIORIDADE']==98,'ROMPIMENTO',np.where(tb_base['PRIORIDADE']==99,'ROMPIMENTO','OTHER'))))
+
 #BACKBONE,ACESSO
-tb_base['STATUS_BACKBONE_ACESSO']=np.where(tb_base['BACKBONE']=='BBN','BACKBONE',np.where(tb_base['BACKBONE']=='BBR','BACKBONE',np.where(tb_base['BACKBONE']=='NINF','ACESSO',np.where(tb_base['BACKBONE']=='BBA','ACESSO',np.where(tb_base['BACKBONE']=='OUTROS','ACESSO','OTHER')))))
+tb_base['STATUS_BACKBONE_ACESSO']=np.where((tb_base['kee_status_ftth']=='EFO_N') & (tb_base['BACKBONE']=='BBN') | (tb_base['BACKBONE']=='BBR') , 'BACKBONE',
+                                           np.where((tb_base['kee_status_ftth']=='EFO_N') & (tb_base['BACKBONE']=='NINF') | (tb_base['BACKBONE']=='BBA') | (tb_base['BACKBONE']=='OUTROS'),'ACESSO',
+                                           'OTHER'))
 
 
-#FTTH
-tb_base = tb_base.fillna('DADOS N LOCALIZADOS')
-tb_base['kee_status_ftth'] = tb_base['COS'].map(str)+'_'+tb_base['RAMIFICACAO'].map(str)+'_'+tb_base['FTTH'].map(str)
-tb_base['STATUS_FTTH'] = np.where((tb_base['kee_status_ftth'] == 'PREFO_ORA_S') | (tb_base['kee_status_ftth'] == 'PREFO_DADOS N LOCALIZADOS_S'),'PRIMARIO',
-                         np.where(tb_base['kee_status_ftth'].str[:5] == 'PRFTH','SECUNDARIO','OUTROS'))
+#FTTH PRIMARIO SECUNDARIO
+
+
+tb_base['STATUS_FTTH'] = np.where((tb_base['kee_status_ftth'] == 'EFO_S'),'PRIMARIO',
+                         np.where(tb_base['kee_status_ftth'] == 'FTH_S','SECUNDARIO','OUTROS'))
 
 
 
@@ -152,7 +157,7 @@ tb_base['tmr_meta'] = np.where((tb_base['result_hour'] > hour_meta_acesso)&(tb_b
 
 tb_base['status_tmr_kee'] = tb_base['STATUS_BACKBONE_ACESSO'].map(str)+'_'+tb_base['tmr_meta'].map(str)
 
-
+tb_base_pr = tb_base[tb_base['UF'].isin(['PR'])]
 
 #ROMPIMENTO
 km = 22200
@@ -160,12 +165,11 @@ km = 22200
 meta_rompimento = 7
 
 
-tb_base_rompimento = tb_base[tb_base['PRIORIDADE'].isin([97,98,99])]
-tb_base_rompimento = tb_base_rompimento[tb_base_rompimento['AREA_TECNICA'].isin(['FO'])]
-tb_base_rompimento = tb_base_rompimento[tb_base_rompimento['COS'].isin(['PREFO'])]
-tb_base_rompimento = tb_base_rompimento[tb_base_rompimento['FTTH'].isin(['N'])]
-tb_base_rompimento = tb_base_rompimento[tb_base_rompimento['MONTH'].isin([month])]
-vl_rompimento = tb_base_rompimento['UF'].count()
+tb_base_pr_rompimento = tb_base_pr[tb_base_pr['PRIORIDADE'].isin([97,98,99])]
+tb_base_pr_rompimento = tb_base_pr_rompimento[tb_base_pr_rompimento['COS'].isin(['PREFO'])]
+tb_base_pr_rompimento = tb_base_pr_rompimento[tb_base_pr_rompimento['FTTH'].isin(['N'])]
+#tb_base_pr_rompimento = tb_base_pr_rompimento[tb_base_pr_rompimento['MONTH'].isin([month])]
+vl_rompimento = tb_base_pr_rompimento['UF'].count()
 
 result_rompimento =(vl_rompimento / km) * 1000
 #PROJECAO
@@ -181,12 +185,11 @@ print('result_rompimento '+str(result_rompimento))
 
 #ATENUACAO  
 meta_atenuacao =  0.4
-tb_base_atenuacao = tb_base[tb_base['PRIORIDADE'].isin([21])]
-tb_base_atenuacao = tb_base_atenuacao[tb_base_atenuacao['AREA_TECNICA'].isin(['FO'])]
-tb_base_atenuacao = tb_base_atenuacao[tb_base_atenuacao['COS'].isin(['PREFO'])]
-tb_base_atenuacao = tb_base_atenuacao[tb_base_atenuacao['FTTH'].isin(['N'])]
-tb_base_atenuacao = tb_base_atenuacao[tb_base_atenuacao['MONTH'].isin([month])]
-vl_atenuacao = tb_base_atenuacao['UF'].count()
+tb_base_pr_atenuacao = tb_base_pr[tb_base_pr['PRIORIDADE'].isin([21])]
+tb_base_pr_atb_base_pr_atenuacao = tb_base_pr_atenuacao[tb_base_pr_atenuacao['COS'].isin(['PREFO'])]
+tb_base_pr_atenuacao = tb_base_pr_atenuacao[tb_base_pr_atenuacao['FTTH'].isin(['N'])]
+#tb_base_pr_atenuacao = tb_base_pr_atenuacao[tb_base_pr_atenuacao['MONTH'].isin([month])]
+vl_atenuacao = tb_base_pr_atenuacao['UF'].count()
 
 result_atenuacao =(vl_atenuacao / km) * 1000
 #PROJECAO
@@ -203,23 +206,22 @@ print('result_atenuacao '+str(result_atenuacao))
 #BACKBONE
 #FILTERS
 meta_backbone_np = 0.85
-tb_base_backbone = tb_base[tb_base['BACKBONE'].isin(['BBN','BBR'])]
-tb_base_backbone = tb_base_backbone[tb_base_backbone['AREA_TECNICA'].isin(['FO'])]
-tb_base_backbone = tb_base_backbone[tb_base_backbone['COS'].isin(['PREFO'])]
-tb_base_backbone = tb_base_backbone[tb_base_backbone['FTTH'].isin(['N'])]
-tb_base_backbone = tb_base_backbone[tb_base_backbone['MONTH'].isin([month])]
-vl_backbone = tb_base_backbone['UF'].count()
+tb_base_pr_backbone = tb_base_pr[tb_base_pr['BACKBONE'].isin(['BBN','BBR'])]
+tb_bastb_base_pr_backbone = tb_base_pr_backbone[tb_base_pr_backbone['COS'].isin(['PREFO'])]
+tb_base_pr_backbone = tb_base_pr_backbone[tb_base_pr_backbone['FTTH'].isin(['N'])]
+#tb_base_pr_backbone = tb_base_pr_backbone[tb_base_pr_backbone['MONTH'].isin([month])]
+vl_backbone = tb_base_pr_backbone['UF'].count()
 #TMR
-vl_backbone_media_tmr = tb_base_backbone['result_hour'].mean()
-tb_base_backbone_tmr_fora_da_meta = tb_base_backbone[tb_base_backbone['tmr_meta'].isin(['FORA DA META'])]
-vl_backbone_tmr_fora_da_meta = tb_base_backbone_tmr_fora_da_meta['tmr_meta'].count()
+vl_backbone_media_tmr = tb_base_pr_backbone['result_hour'].mean()
+tb_base_pr_backbone_tmr_fora_da_meta = tb_base_pr_backbone[tb_base_pr_backbone['tmr_meta'].isin(['FORA DA META'])]
+vl_backbone_tmr_fora_da_meta = tb_base_pr_backbone_tmr_fora_da_meta['tmr_meta'].count()
 
 #NP
-tb_base_backbone_no_prazo = tb_base_backbone[tb_base_backbone['PRAZO_PSR_2016'].isin(['NP'])]
-tb_base_backbone_fora_prazo = tb_base_backbone[tb_base_backbone['PRAZO_PSR_2016'].isin(['FP'])]
+tb_base_pr_backbone_no_prazo = tb_base_pr_backbone[tb_base_pr_backbone['PRAZO_PSR_2016'].isin(['NP'])]
+tb_base_pr_backbone_fora_prazo = tb_base_pr_backbone[tb_base_pr_backbone['PRAZO_PSR_2016'].isin(['FP'])]
 
-vl_backbone_np = tb_base_backbone_no_prazo['UF'].count()
-vl_backbone_fp = tb_base_backbone_fora_prazo['UF'].count()
+vl_backbone_np = tb_base_pr_backbone_no_prazo['UF'].count()
+vl_backbone_fp = tb_base_pr_backbone_fora_prazo['UF'].count()
 backbone_result = vl_backbone_np / vl_backbone
 
 #PROJECAO NP
@@ -243,23 +245,22 @@ print('qtde_backbone_tmr_fora_da_meta '+str(vl_backbone_tmr_fora_da_meta))
 #ACESSO
 #FILTERS
 meta_acesso_np = 0.85
-tb_base_acesso = tb_base[tb_base['BACKBONE'].isin(['NINF','BBA','OUTROS'])]
-tb_base_acesso = tb_base_acesso[tb_base_acesso['AREA_TECNICA'].isin(['FO'])]
-tb_base_acesso = tb_base_acesso[tb_base_acesso['COS'].isin(['PREFO'])]
-tb_base_acesso = tb_base_acesso[tb_base_acesso['FTTH'].isin(['N'])]
-tb_base_acesso = tb_base_acesso[tb_base_acesso['MONTH'].isin([month])]
-vl_acesso = tb_base_acesso['UF'].count()
+tb_base_pr_acesso = tb_base_pr[tb_base_pr['BACKBONE'].isin(['NINF','BBA','OUTROS'])]
+tb_base_pr_acesso = tb_base_pr_acesso[tb_base_pr_acesso['COS'].isin(['PREFO'])]
+tb_base_pr_acesso = tb_base_pr_acesso[tb_base_pr_acesso['FTTH'].isin(['N'])]
+#tb_base_pr_acesso = tb_base_pr_acesso[tb_base_pr_acesso['MONTH'].isin([month])]
+vl_acesso = tb_base_pr_acesso['UF'].count()
 
 #TMR
-vl_acesso_media_tmr = tb_base_acesso['result_hour'].mean()
-tb_base_acesso_tmr_fora_da_meta = tb_base_acesso[tb_base_acesso['tmr_meta'].isin(['FORA DA META'])]
-vl_acesso_tmr_fora_da_meta = tb_base_acesso_tmr_fora_da_meta['tmr_meta'].count()
+vl_acesso_media_tmr = tb_base_pr_acesso['result_hour'].mean()
+tb_base_pr_acesso_tmr_fora_da_meta = tb_base_pr_acesso[tb_base_pr_acesso['tmr_meta'].isin(['FORA DA META'])]
+vl_acesso_tmr_fora_da_meta = tb_base_pr_acesso_tmr_fora_da_meta['tmr_meta'].count()
 #NP
-tb_base_acesso_no_prazo = tb_base_acesso[tb_base_acesso['PRAZO_PSR_2016'].isin(['NP'])]
-tb_base_acesso_fora_prazo = tb_base_acesso[tb_base_acesso['PRAZO_PSR_2016'].isin(['FP'])]
+tb_base_pr_acesso_no_prazo = tb_base_pr_acesso[tb_base_pr_acesso['PRAZO_PSR_2016'].isin(['NP'])]
+tb_base_pr_acesso_fora_prazo = tb_base_pr_acesso[tb_base_pr_acesso['PRAZO_PSR_2016'].isin(['FP'])]
 
-vl_acesso_np = tb_base_acesso_no_prazo['UF'].count()
-vl_acesso_fp = tb_base_acesso_fora_prazo['UF'].count()
+vl_acesso_np = tb_base_pr_acesso_no_prazo['UF'].count()
+vl_acesso_fp = tb_base_pr_acesso_fora_prazo['UF'].count()
 acesso_result = vl_acesso_np / vl_acesso
 
 #PROJECAO NP
@@ -283,17 +284,17 @@ print('qtde_acesso_tmr_fora_da_meta '+str(vl_acesso_tmr_fora_da_meta))
 #NO PRAZO FTTH
 #PRIMARIO
 
-tb_base_ftth_primario = tb_base[tb_base['STATUS_FTTH'].isin(['PRIMARIO'])]
-tb_base_ftth_primario = tb_base_ftth_primario[tb_base_ftth_primario['MONTH'].isin([month])]
-tb_base_ftth_primario = tb_base_ftth_primario[tb_base_ftth_primario['FTTH'].isin(['S'])]
-vl_ftth_primario = tb_base_ftth_primario['UF'].count()
-vl_ftth_primario_media = tb_base_ftth_primario['result_hour'].mean()
+tb_base_pr_ftth_primario = tb_base_pr[tb_base_pr['STATUS_FTTH'].isin(['PRIMARIO'])]
+#tb_base_pr_ftth_primario = tb_base_pr_ftth_primario[tb_base_pr_ftth_primario['MONTH'].isin([month])]
+tb_base_pr_ftth_primario = tb_base_pr_ftth_primario[tb_base_pr_ftth_primario['FTTH'].isin(['S'])]
+vl_ftth_primario = tb_base_pr_ftth_primario['UF'].count()
+vl_ftth_primario_media = tb_base_pr_ftth_primario['result_hour'].mean()
 
-tb_base_ftth_primario_no_prazo = tb_base_ftth_primario[tb_base_ftth_primario['PRAZO_PSR_2016'].isin(['NP'])]
-tb_base_ftth_primario_fora_prazo = tb_base_ftth_primario[tb_base_ftth_primario['PRAZO_PSR_2016'].isin(['FP'])]
+tb_base_pr_ftth_primario_no_prazo = tb_base_pr_ftth_primario[tb_base_pr_ftth_primario['PRAZO_PSR_2016'].isin(['NP'])]
+tb_base_pr_ftth_primario_fora_prazo = tb_base_pr_ftth_primario[tb_base_pr_ftth_primario['PRAZO_PSR_2016'].isin(['FP'])]
 
-vl_ftth_primario_np = tb_base_ftth_primario_no_prazo['UF'].count()
-vl_ftth_primario_fp = tb_base_ftth_primario_fora_prazo['UF'].count()
+vl_ftth_primario_np = tb_base_pr_ftth_primario_no_prazo['UF'].count()
+vl_ftth_primario_fp = tb_base_pr_ftth_primario_fora_prazo['UF'].count()
 ftth_primario_result = vl_ftth_primario_np / vl_ftth_primario
 
 print('VALORES NP ftth_PRIMARIO:')
@@ -306,17 +307,17 @@ print('mean_ftth_primario '+str(vl_ftth_primario_media))
 
 #SECUNDARIO
 
-tb_base_ftth_secundario = tb_base[tb_base['STATUS_FTTH'].isin(['SECUNDARIO'])]
-tb_base_ftth_secundario = tb_base_ftth_secundario[tb_base_ftth_secundario['MONTH'].isin([month])]
-tb_base_ftth_secundario = tb_base_ftth_secundario[tb_base_ftth_secundario['FTTH'].isin(['S'])]
-vl_ftth_secundario = tb_base_ftth_secundario['UF'].count()
-vl_ftth_secundario_media = tb_base_ftth_secundario['result_hour'].mean()
+tb_base_pr_ftth_secundario = tb_base_pr[tb_base_pr['STATUS_FTTH'].isin(['SECUNDARIO'])]
+#tb_base_pr_ftth_secundario = tb_base_pr_ftth_secundario[tb_base_pr_ftth_secundario['MONTH'].isin([month])]
+tb_base_pr_ftth_secundario = tb_base_pr_ftth_secundario[tb_base_pr_ftth_secundario['FTTH'].isin(['S'])]
+vl_ftth_secundario = tb_base_pr_ftth_secundario['UF'].count()
+vl_ftth_secundario_media = tb_base_pr_ftth_secundario['result_hour'].mean()
 
-tb_base_ftth_secundario_no_prazo = tb_base_ftth_secundario[tb_base_ftth_secundario['PRAZO_PSR_2016'].isin(['NP'])]
-tb_base_ftth_secundario_fora_prazo = tb_base_ftth_secundario[tb_base_ftth_secundario['PRAZO_PSR_2016'].isin(['FP'])]
+tb_base_pr_ftth_secundario_no_prazo = tb_base_pr_ftth_secundario[tb_base_pr_ftth_secundario['PRAZO_PSR_2016'].isin(['NP'])]
+tb_base_pr_ftth_secundario_fora_prazo = tb_base_pr_ftth_secundario[tb_base_pr_ftth_secundario['PRAZO_PSR_2016'].isin(['FP'])]
 
-vl_ftth_secundario_np = tb_base_ftth_secundario_no_prazo['UF'].count()
-vl_ftth_secundario_fp = tb_base_ftth_secundario_fora_prazo['UF'].count()
+vl_ftth_secundario_np = tb_base_pr_ftth_secundario_no_prazo['UF'].count()
+vl_ftth_secundario_fp = tb_base_pr_ftth_secundario_fora_prazo['UF'].count()
 ftth_secundario_result = vl_ftth_secundario_np / vl_ftth_secundario
 
 print('VALORES NP ftth_SENCUNDARIO:')
@@ -431,8 +432,9 @@ else:
 
 #graphic = px.treemap(tb_base,path=['STATUS_AT_ROMP','NOME_TECNICO'])
 
+#ARRUMAR BACKBONE E ACESSO
 
-   
+
 #else:
 #    print("Real proof is wrong!!")
 
@@ -595,6 +597,9 @@ print('finish proccess projection')
 #acesso np (colun backbone: ninf, bba, outros) divide dado da coluna ay: np pelo total
 #acesso tmr (colun backbone: ninf, bba, outros) tempo medio coluna bj:TEMPO_FIBRA_PSR_EM_HORAS
 #ftth primario col f = fo, col g = prefo,col v = ora ou vazio, col bi = s 
-#ftth secundario col f = fo, col g = prfth, col bi = s 
+#ftth secundario col f = fo, col g = prfth, col bi = s .
+
+
+
 
 #pyinstaller --onefile fibra_legada.py
